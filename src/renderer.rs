@@ -7,7 +7,7 @@ use std::io;
 use std::io::{stdout, Write};
 use nalgebra::SMatrix;
 
-use crate::CurrentObject;
+use crate::current_piece::CurrentObject;
 
 
 pub fn render_all(obj : &CurrentObject, map : SMatrix<u8, 10, 18>, level : u8, score : u32, lines : u32) -> io::Result<()> {
