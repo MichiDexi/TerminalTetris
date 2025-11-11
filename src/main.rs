@@ -1,26 +1,20 @@
-use nalgebra::{matrix, Matrix, SMatrix};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{time::{Duration, Instant}, io, env};
+use nalgebra::{ SMatrix };
+use std::{time::{Duration, Instant}, io};
+// use std::env; <- Will be important later
 use std::collections::HashSet;
 use std::io::{stdout, Write};
 use std::thread::sleep;
 use crossterm::{
 	event::{
-		read, poll, DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-		EnableFocusChange, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyEvent,
+		read, poll, Event, KeyCode, KeyEventKind, KeyEvent,
 	},
 	terminal::{
-		enable_raw_mode,
-		disable_raw_mode,
-		Clear,
-		ClearType::All,
 		size,
 	},
 	execute,
 	cursor,
 };
 use rand::prelude::*;
-use std::collections::VecDeque;
 
 
 
@@ -38,7 +32,7 @@ fn main() -> io::Result<()> {
 	let frame_time: Duration = Duration::from_secs_f32(1.0 / fps);
 	print!("\x1B[?25l"); // hide cursor
 	
-	let args: Vec<String> = env::args().collect(); // Gameboard size, start level, visual size
+	// let args: Vec<String> = env::args().collect(); // Gameboard size, start level, visual size // TODO: Add thing behavior
 	let mut input_obj = InputState::new();
 	crossterm::terminal::enable_raw_mode().unwrap();
 	
@@ -74,13 +68,16 @@ fn main() -> io::Result<()> {
 
 		// Frame time
 		let now = Instant::now();
-		let last_frame = now;
 
 		// Input
 		let input = poll_input(&mut input_obj);
 
 		// Player object
-		tick_obj(&mut map, &mut cur_obj, input.0, input.1, input.2, input.3, &mut level, &mut score, &mut lines);
+		tick_obj(&mut map, &mut cur_obj,
+				(input.0, input.1, input.2, input.3),
+				(&mut level, &mut score, &mut lines)
+				)?;
+		
 		if cur_obj.dead {
 			running = false;
 		}
@@ -97,7 +94,7 @@ fn main() -> io::Result<()> {
 		}
 
 		// Render
-		render_all(&cur_obj, map, level, score, lines);
+		render_all(&cur_obj, map, level, score, lines)?;
 
 		// Frame time II
 		let frame_duration = Instant::now().duration_since(now);
@@ -109,21 +106,23 @@ fn main() -> io::Result<()> {
 	let mut stdout = stdout();
 	execute!(stdout, crossterm::terminal::Clear(crossterm::terminal::ClearType::All)).unwrap();
 	execute!(stdout, cursor::MoveTo(0, 0)).unwrap();
-	write!(stdout, "Score: {}\nLevel: {}\nLines: {}\n", score, level, lines);
-	stdout.flush();
+	write!(stdout, "Score: {}\nLevel: {}\nLines: {}\n", score, level, lines)?;
+	stdout.flush()?;
 	print!("\x1B[?25h"); // show cursor
 	Ok(())
 }
 
-fn render_all(obj : &CurrentObject, map : SMatrix<u8, 10, 18>, level : u8, score : u32, lines : u32) {
+fn render_all(obj : &CurrentObject, map : SMatrix<u8, 10, 18>, level : u8, score : u32, lines : u32) -> io::Result<()> {
 	let (cols, rows) = size().unwrap();
 	let x_offset = (cols/2) as u8 -18;
 	let y_offset = (rows/2) as u8 -9;
 	
-	render(obj, map, x_offset, y_offset);
-	update_border(x_offset, y_offset);
-	update_display(x_offset, y_offset, level, score, lines);
+	render(obj, map, x_offset, y_offset)?;
+	update_border(x_offset, y_offset)?;
+	update_display(x_offset, y_offset, level, score, lines)?;
 	update_piece_preview(x_offset, y_offset, obj);
+
+	Ok(())
 }
 
 
@@ -190,14 +189,13 @@ impl InputState {
 		self.just_pressed.clear();
 
 		while poll(Duration::from_millis(0)).unwrap() {
-			if let Event::Key(KeyEvent { code, kind, .. }) = read().unwrap() {
-				if matches!(kind, KeyEventKind::Press | KeyEventKind::Repeat) {
-					if !self.pressed.contains(&code) {
-						self.just_pressed.insert(code);
-					}
-					self.pressed.insert(code);
-					self.last_press_time.insert(code, Instant::now());
+			if let Event::Key(KeyEvent { code, kind, .. }) = read().unwrap() &&
+					matches!(kind, KeyEventKind::Press | KeyEventKind::Repeat) {
+				if !self.pressed.contains(&code) {
+					self.just_pressed.insert(code);
 				}
+				self.pressed.insert(code);
+				self.last_press_time.insert(code, Instant::now());
 			}
 		}
 		let now = Instant::now();
@@ -273,13 +271,8 @@ fn poll_input(input_obj : &mut InputState) -> (i8, i8, bool, bool, bool, bool) {
 fn tick_obj(
 	matrix : &mut SMatrix<u8, 10, 18>,
 	obj : &mut CurrentObject,
-	x : i8,
-	rotate : i8,
-	soft_drop : bool,
-	hard_drop : bool,
-	level : &mut u8,
-	score : &mut u32,
-	lines : &mut u32) -> io::Result<()>
+	input : (i8, i8, bool, bool),
+	score_vars : (&mut u8, &mut u32, &mut u32)) -> io::Result<()>
 {
 
 	// Object reset
@@ -302,7 +295,7 @@ fn tick_obj(
 	if obj.tick_delay <= 0 {
 		if try_move(matrix, obj, 0, 1) {
 			obj.cy += 1;
-			obj.tick_delay = match level {
+			obj.tick_delay = match score_vars.0 {
 				0 => 53,
 				1 => 49,
 				2 => 45,
@@ -333,23 +326,20 @@ fn tick_obj(
 			matrix[((obj.x3+obj.cx as i8) as usize, (obj.y3+obj.cy as i8) as usize)] = obj.otype+1;
 			obj.exists = false;
 			obj.exist_delay = 10;
-			check_rows(matrix, level, score, lines);
+			check_rows(matrix, score_vars.0, score_vars.1, score_vars.2);
 		}
-		
+	}
+	else if input.2 {
+		obj.tick_delay -= 3;
 	}
 	else {
-		if soft_drop {
-			obj.tick_delay -= 3;
-		}
-		else {
-			obj.tick_delay -= 1;
-		}
+		obj.tick_delay -= 1;
 	}
 
 	// Player input
 	if obj.move_delay == 0 {
-		if x != 0 {
-			if x < 0 { // Right
+		if input.0 != 0 {
+			if input.0 < 0 { // Right
 				if try_move(matrix, obj, 1, 0) {
 					obj.cx += 1;
 					obj.move_delay = 15;
@@ -369,38 +359,36 @@ fn tick_obj(
 
 
 
-	if rotate != 0 {
-		if try_rotate(matrix, obj, rotate) {
-			if rotate > 0 { // Clockwise
-				let mut temp : i8;
+	if input.1 != 0 && try_rotate(matrix, obj, input.1) {
+		if input.1 > 0 { // Clockwise
+			let mut temp : i8;
 
-				temp = obj.x1;
-				obj.x1 = obj.y1;
-				obj.y1 = -temp;
+			temp = obj.x1;
+			obj.x1 = obj.y1;
+			obj.y1 = -temp;
 
-				temp = obj.x2;
-				obj.x2 = obj.y2;
-				obj.y2 = -temp;
+			temp = obj.x2;
+			obj.x2 = obj.y2;
+			obj.y2 = -temp;
 
-				temp = obj.x3;
-				obj.x3 = obj.y3;
-				obj.y3 = -temp;
-			}
-			else { // Counter clockwise
-				let mut temp : i8;
+			temp = obj.x3;
+			obj.x3 = obj.y3;
+			obj.y3 = -temp;
+		}
+		else { // Counter clockwise
+			let mut temp : i8;
 
-				temp = obj.x1;
-				obj.x1 = -obj.y1;
-				obj.y1 = temp;
+			temp = obj.x1;
+			obj.x1 = -obj.y1;
+			obj.y1 = temp;
 
-				temp = obj.x2;
-				obj.x2 = -obj.y2;
-				obj.y2 = temp;
+			temp = obj.x2;
+			obj.x2 = -obj.y2;
+			obj.y2 = temp;
 
-				temp = obj.x3;
-				obj.x3 = -obj.y3;
-				obj.y3 = temp;
-			}
+			temp = obj.x3;
+			obj.x3 = -obj.y3;
+			obj.y3 = temp;
 		}
 	}
 	Ok(())
@@ -442,11 +430,12 @@ fn try_rotate(matrix : &SMatrix<u8, 10, 18>, obj : &CurrentObject, r : i8) -> bo
 
 	let target_cx = obj.cx as i8;
 	let target_cy = obj.cy as i8;
-	let mut target_x1 = (obj.x1) +obj.cx as i8;
-	let mut target_y1 = (obj.y1) +obj.cy as i8;
-	let mut target_x2 = (obj.x2) +obj.cx as i8;
-	let mut target_y2 = (obj.y2) +obj.cy as i8;
-	let mut target_x3 = (obj.x3) +obj.cx as i8;
+	// TODO: Use expression based stuff thingy	
+	let mut target_x1 = (-obj.y1) +obj.cx as i8;
+	let mut target_y1 = (obj.x1) +obj.cy as i8;
+	let mut target_x2 = (-obj.y2) +obj.cx as i8;
+	let mut target_y2 = (obj.x2) +obj.cy as i8;
+	let mut target_x3 = (-obj.y3) +obj.cx as i8;
 	let mut target_y3 = (obj.y3) +obj.cy as i8;
 
 	if r == 1 {
@@ -456,14 +445,6 @@ fn try_rotate(matrix : &SMatrix<u8, 10, 18>, obj : &CurrentObject, r : i8) -> bo
 		target_y2 = (-obj.x2) +obj.cy as i8;
 		target_x3 = (obj.y3) +obj.cx as i8;
 		target_y3 = (-obj.x3) +obj.cy as i8;
-	}
-	else {
-		target_x1 = (-obj.y1) +obj.cx as i8;
-		target_y1 = (obj.x1) +obj.cy as i8;
-		target_x2 = (-obj.y2) +obj.cx as i8;
-		target_y2 = (obj.x2) +obj.cy as i8;
-		target_x3 = (-obj.y3) +obj.cx as i8;
-		target_y3 = (obj.x3) +obj.cy as i8;
 	}
 
 
@@ -602,7 +583,7 @@ fn clear_row(map : &mut SMatrix<u8, 10, 18>, row : u8) {
 
 
 
-fn render(player_obj : &CurrentObject, map : SMatrix<u8, 10, 18>, x_offset : u8, y_offset : u8) {
+fn render(player_obj : &CurrentObject, map : SMatrix<u8, 10, 18>, x_offset : u8, y_offset : u8) -> io::Result<()> {
 
 	let mut stdout = stdout();
 	execute!(stdout, crossterm::terminal::Clear(crossterm::terminal::ClearType::All)).unwrap();
@@ -611,11 +592,11 @@ fn render(player_obj : &CurrentObject, map : SMatrix<u8, 10, 18>, x_offset : u8,
 	for i in 0..10 {
 		for j in 0..18 {
 			execute!(stdout, cursor::MoveTo(2+2*i +x_offset as u16, j +y_offset as u16)).unwrap();
-			write!(stdout, "\x1b[38;5;{}m", map[(i as usize, j as usize)]);
+			write!(stdout, "\x1b[38;5;{}m", map[(i as usize, j as usize)])?;
 			write!(stdout, "██").unwrap();
 		}
 	}
-	write!(stdout, "\x1b[38;5;{}m", player_obj.otype+1);
+	write!(stdout, "\x1b[38;5;{}m", player_obj.otype+1)?;
 
 	// Player object
 	if player_obj.exists {
@@ -630,6 +611,7 @@ fn render(player_obj : &CurrentObject, map : SMatrix<u8, 10, 18>, x_offset : u8,
 	}
 
 	stdout.flush().unwrap(); // flush manually
+	Ok(())
 }
 
 fn update_display(
@@ -637,11 +619,11 @@ fn update_display(
 	y_offset : u8,
 	level : u8,
 	score : u32,
-	lines : u32) {
+	lines : u32) -> io::Result<()> {
 
 	let mut stdout = stdout();
 
-	write!(stdout, "\x1b[38;5;7m");
+	write!(stdout, "\x1b[38;5;7m")?;
 	
 	execute!(stdout, cursor::MoveTo(28 +x_offset as u16, 3 +y_offset as u16)).unwrap();
 	write!(stdout, "Score").unwrap();
@@ -659,14 +641,15 @@ fn update_display(
 	write!(stdout, "{}", level).unwrap();
 	
 	stdout.flush().unwrap(); // flush manually
+	Ok(())
 }
 
 fn update_border(
 	x_offset : u8,
-	y_offset : u8) {
+	y_offset : u8) -> io::Result<()> {
 
 	let mut stdout = stdout();
-	write!(stdout, "\x1b[38;5;7m");
+	write!(stdout, "\x1b[38;5;7m")?;
 	for i in 0..18 {
 		execute!(stdout, cursor::MoveTo(x_offset as u16, i +y_offset as u16)).unwrap();
 		write!(stdout, "██").unwrap();
@@ -677,6 +660,7 @@ fn update_border(
 	write!(stdout, "████████████████████████").unwrap();
 	
 	stdout.flush().unwrap(); // flush manually
+	Ok(())
 }
 
 fn update_piece_preview(
