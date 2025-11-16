@@ -1,3 +1,4 @@
+// Headers
 use nalgebra::SMatrix;
 use std::{
 	time::{
@@ -7,7 +8,7 @@ use std::{
 	io
 };
 use std::{
-	// env <- Will be important later
+	// env, <- Will be important later
 	io::{
 		stdout,
 		Write
@@ -25,23 +26,53 @@ mod renderer;
 mod current_piece;
 mod input;
 
+// Constant values
+const TARGET_FPS : f32 = 59.73;
 
+
+
+// Entry point
 fn main() -> io::Result<()> {
 	
-	let fps: f32 = 59.73;
-	let frame_time: Duration = Duration::from_secs_f32(1.0 / fps);
+	let frame_time : Duration = Duration::from_secs_f32(1.0 / TARGET_FPS); // Calculates the time per frame
 	print!("\x1B[?25l"); // hide cursor
 	
 	// let args: Vec<String> = env::args().collect(); // Gameboard size, start level, visual size // TODO: Add thing behavior
 	let mut input_obj = input::InputState::new();
 	crossterm::terminal::enable_raw_mode().unwrap();
+
+
+	// The actual game
+	let scores = game(&mut input_obj, frame_time);
+
 	
+	// Program end
+	crossterm::terminal::disable_raw_mode().unwrap(); // Disables raw mode
+	
+	let mut stdout = stdout();
+	execute!(stdout, crossterm::terminal::Clear(crossterm::terminal::ClearType::All)).unwrap(); // Clears terminal
+	execute!(stdout, cursor::MoveTo(0, 0)).unwrap(); // Moves cursor to 0,0
+	write!(stdout, "Score: {}\nLevel: {}\nLines: {}\n", scores.1, scores.0, scores.2)?; // Endscreen
+	stdout.flush()?;
+	
+	print!("\x1B[?25h"); // Shows cursor
+	Ok(())
+}
+
+// Game function
+fn game(
+	input_obj : &mut input::InputState,
+	framerate : Duration)
+	-> (u8, u32, u32) // Returns scores
+{
+	// Return initialization
 	let mut level : u8 = 0;
 	let mut score : u32 = 0;
 	let mut lines : u32 = 0;
-	
+
+	// Game setup
 	let mut map : SMatrix<u8, 10, 18> = SMatrix::zeros(); // matrix stuff 10x18
-	let mut cur_obj : current_piece::CurrentObject = current_piece::CurrentObject {
+	let mut cur_obj = current_piece::CurrentObject {
 		cx: 0,
 		cy: 0,
 		x1: 0,
@@ -58,56 +89,46 @@ fn main() -> io::Result<()> {
 		dead : false,
 		pieces : vec!(0, 0),
 	};
-	
-	let mut running : bool = true;
-	current_piece::reset_obj(&mut cur_obj)?;
+	let _ = current_piece::reset_obj(&mut cur_obj); // Piece gets reset
 	
 
 	// Main loop
+	let mut running : bool = true;
+	
 	while running {
-
-		// Frame time
-		let now = Instant::now();
-
-		// Input
-		let input = input::poll_input(&mut input_obj);
+	
+		let now = Instant::now(); // Get frame time
+		let input_check = input::poll_input(input_obj); // Poll input
 
 		// Player object
-		current_piece::tick_obj(&mut map, &mut cur_obj,
-				(input.0, input.1, input.2, input.3),
-				(&mut level, &mut score, &mut lines)
-				)?;
-		
-		if cur_obj.dead {
+		let _ = current_piece::tick_obj(&mut map, &mut cur_obj,
+			(input_check.0, input_check.1, input_check.2, input_check.3),
+			(&mut level, &mut score, &mut lines)
+		);
+		if cur_obj.dead { // Check to stop the game if the piece is stuck
 			running = false;
 		}
 
 		// Other
-		if input.4 { // Paused
+		if input_check.4 { // Pause key
 			while !input_obj.just_pressed(KeyCode::Char('p')) {
 				input_obj.update();
 				sleep(Duration::from_millis(100));
 			}
 		}
-		if input.5 { // Quit
+		if input_check.5 { // Quit key
 			running = false;
 		}
 
 		// Render
-		renderer::render_all(&cur_obj, map, level, score, lines)?;
+		let _ = renderer::render_all(&cur_obj, map, level, score, lines);
 
 		// Frame time II
 		let frame_duration = Instant::now().duration_since(now);
-		if frame_duration < frame_time {
-			sleep(frame_time - frame_duration);
+		if frame_duration < framerate {
+			sleep(framerate - frame_duration);
 		}
 	}
-	crossterm::terminal::disable_raw_mode().unwrap();
-	let mut stdout = stdout();
-	execute!(stdout, crossterm::terminal::Clear(crossterm::terminal::ClearType::All)).unwrap();
-	execute!(stdout, cursor::MoveTo(0, 0)).unwrap();
-	write!(stdout, "Score: {}\nLevel: {}\nLines: {}\n", score, level, lines)?;
-	stdout.flush()?;
-	print!("\x1B[?25h"); // show cursor
-	Ok(())
+	
+	(level, score, lines)
 }
