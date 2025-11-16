@@ -81,7 +81,7 @@ pub fn poll_input(input_obj : &mut InputState) -> (i8, i8, bool, bool, bool, boo
 	let rotate_right_pressed : bool = input_obj.just_pressed(KeyCode::Char('x'));
 	let soft_drop : bool = input_obj.is_pressed(KeyCode::Down) || input_obj.just_pressed(KeyCode::Down);
 	let hard_drop : bool = input_obj.just_pressed(KeyCode::Up);
-	let pause_pressed : bool = input_obj.just_pressed(KeyCode::Char('o'));
+	let pause_pressed : bool = input_obj.just_pressed(KeyCode::Tab);
 	let quit_pressed : bool = input_obj.just_pressed(KeyCode::Esc);
 
 	// Output setup

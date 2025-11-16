@@ -37,7 +37,8 @@ fn main() -> io::Result<()> {
 	let frame_time : Duration = Duration::from_secs_f32(1.0 / TARGET_FPS); // Calculates the time per frame
 	print!("\x1B[?25l"); // hide cursor
 	
-	// let args: Vec<String> = env::args().collect(); // Gameboard size, start level, visual size // TODO: Add thing behavior
+	// TODO: Add Gameboard size, start level, visual size change with Arguments
+	// |-> let args: Vec<String> = env::args().collect();
 	let mut input_obj = input::InputState::new();
 	crossterm::terminal::enable_raw_mode().unwrap();
 
@@ -89,7 +90,7 @@ fn game(
 		dead : false,
 		pieces : vec!(0, 0),
 	};
-	let _ = current_piece::reset_obj(&mut cur_obj); // Piece gets reset
+	let _ = cur_obj.reset_obj(); // Piece gets reset
 	
 
 	// Main loop
@@ -99,7 +100,7 @@ fn game(
 		let input_check = input::poll_input(input_obj); // Poll input
 
 		// Player object
-		let _ = current_piece::tick_obj(&mut map, &mut cur_obj,
+		let _ = cur_obj.tick_obj(&mut map,
 			(input_check.0, input_check.1, input_check.2, input_check.3),
 			(&mut level, &mut score, &mut lines)
 		);
@@ -109,9 +110,40 @@ fn game(
 
 		// Other
 		if input_check.4 { // Pause key
-			while !input_obj.just_pressed(KeyCode::Char('p')) {
-				input_obj.update();
+
+			// Pause render initialization
+			let obj_paused_render = current_piece::CurrentObject {
+				cx: 0,
+				cy: 30,
+				x1: 0,
+				y1: 0,
+				x2: 0,
+				y2: 0,
+				x3: 0,
+				y3: 0,
+				tick_delay: 0,
+				exists: false,
+				exist_delay: 100,
+				otype: 0,
+				move_delay: 15,
+				dead : false,
+				pieces : cur_obj.pieces.clone(),
+			};
+			let map_paused_render : SMatrix<u8, 10, 18> = SMatrix::zeros();
+
+			// Render
+			let _ = renderer::render_all(&obj_paused_render, map_paused_render, level, score, lines);
+
+			// Wait for unpause
+			loop {
 				sleep(Duration::from_millis(100));
+				input_obj.update();
+				if input_obj.just_pressed(KeyCode::Esc) ||
+					input_obj.just_pressed(KeyCode::Tab) 
+				{
+					break;
+				}
+				
 			}
 		}
 		if input_check.5 { // Quit key
@@ -121,7 +153,7 @@ fn game(
 		// Render
 		let _ = renderer::render_all(&cur_obj, map, level, score, lines);
 
-		// Frame time II
+		// Frame time management for consistent framerate
 		let frame_duration = Instant::now().duration_since(now);
 		if frame_duration < framerate {
 			sleep(framerate - frame_duration);
