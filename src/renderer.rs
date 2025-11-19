@@ -14,45 +14,100 @@ pub fn render_all(obj : &CurrentObject, map : SMatrix<u8, 10, 18>, level : u8, s
 	let (cols, rows) = size().unwrap();
 	let x_offset = (cols/2) as u8 -18;
 	let y_offset = (rows/2) as u8 -9;
-	
-	render(obj, map, x_offset, y_offset)?;
-	update_border(x_offset, y_offset)?;
+
+	let mut playfield_buffer : SMatrix<u8, 12, 19> = SMatrix::zeros(); // x0/11 & y19 are borders
+
+	playfield(&mut playfield_buffer, &map);
+	player_object(&mut playfield_buffer, obj);
+	border(&mut playfield_buffer);
+	render_buffer(&playfield_buffer, x_offset, y_offset)?;
+	// render(obj, map, x_offset, y_offset)?;
+	// update_border(x_offset, y_offset)?;
 	update_display(x_offset, y_offset, level, score, lines)?;
 	update_piece_preview(x_offset, y_offset, obj);
 
+	
+	
 	Ok(())
 }
 
-fn render(player_obj : &CurrentObject, map : SMatrix<u8, 10, 18>, x_offset : u8, y_offset : u8) -> io::Result<()> {
+fn player_object(buffer : &mut SMatrix<u8, 12, 19>, player_obj : &CurrentObject) {
 
-	let mut stdout = stdout();
-	execute!(stdout, crossterm::terminal::Clear(crossterm::terminal::ClearType::All)).unwrap();
+	// Set positions
+	
+	let x : i8 = player_obj.cx as i8;
+	let x1 : i8 = player_obj.cx as i8 + player_obj.x1;
+	let x2 : i8 = player_obj.cx as i8 + player_obj.x2;
+	let x3 : i8 = player_obj.cx as i8 + player_obj.x3;
+	let y : i8 = player_obj.cy as i8;
+	let y1 : i8 = player_obj.cy as i8 + player_obj.y1;
+	let y2 : i8 = player_obj.cy as i8 + player_obj.y2;
+	let y3 : i8 = player_obj.cy as i8 + player_obj.y3;
+	
+	// Set object positions in buffer
+	if check_out_of_bounds(x, y) {
+		buffer[(1+x as usize, y as usize)] = player_obj.otype+1;
+	}
+	if check_out_of_bounds(x1, y1) {
+		buffer[(1+x1 as usize, y1 as usize)] = player_obj.otype+1;
+	}
+	if check_out_of_bounds(x2, y2) {
+		buffer[(1+x2 as usize, y2 as usize)] = player_obj.otype+1;
+	}
+	if check_out_of_bounds(x3, y3) {
+		buffer[(1+x3 as usize, y3 as usize)] = player_obj.otype+1;
+	}
+}
 
-	// Matrix
-	for i in 0..10 {
-		for j in 0..18 {
-			execute!(stdout, cursor::MoveTo(2+2*i +x_offset as u16, j +y_offset as u16)).unwrap();
-			write!(stdout, "\x1b[38;5;{}m", map[(i as usize, j as usize)])?;
-			write!(stdout, "██").unwrap();
+fn check_out_of_bounds(x : i8, y : i8) -> bool {
+	if x > -1 && x < 12 &&
+		y > -1 && y < 19 {
+
+		return true;
+	}
+
+	false
+}
+
+fn playfield(buffer : &mut SMatrix<u8, 12, 19>, map : &SMatrix<u8, 10, 18>) {
+	// Write map (with x_offset of 1) into buffer
+	for x in 0..10 {
+		for y in 0..18 {
+			buffer[(x+1, y)] = map[(x, y)];
 		}
 	}
-	write!(stdout, "\x1b[38;5;{}m", player_obj.otype+1)?;
+}
 
-	// Player object
-	if player_obj.exists {
-		execute!(stdout, cursor::MoveTo((2+2*(player_obj.x1+player_obj.cx as i8) +x_offset as i8) as u16, ((player_obj.y1+player_obj.cy as i8) +y_offset as i8) as u16)).unwrap();
-		write!(stdout, "██").unwrap();
-		execute!(stdout, cursor::MoveTo((2+2*(player_obj.x2+player_obj.cx as i8) +x_offset as i8) as u16, ((player_obj.y2+player_obj.cy as i8) +y_offset as i8) as u16)).unwrap();
-		write!(stdout, "██").unwrap();
-		execute!(stdout, cursor::MoveTo((2+2*(player_obj.x3+player_obj.cx as i8) +x_offset as i8) as u16, ((player_obj.y3+player_obj.cy as i8) +y_offset as i8) as u16)).unwrap();
-		write!(stdout, "██").unwrap();
-		execute!(stdout, cursor::MoveTo((2+2*(player_obj.cx) +x_offset) as u16, (player_obj.cy +y_offset) as u16)).unwrap();
-		write!(stdout, "██").unwrap();
+fn border(buffer : &mut SMatrix<u8, 12, 19>) {
+	// Walls
+	for y in 0..19 {
+		buffer[(0,  y)] = 7;
+		buffer[(11, y)] = 7;
 	}
 
-	stdout.flush().unwrap(); // flush manually
+	// Floor
+	for x in 1..11 {
+		buffer[(x, 18)] = 7;
+	}
+}
+
+fn render_buffer(buffer : &SMatrix<u8, 12, 19>, x_offset : u8, y_offset : u8) -> io::Result<()> {
+
+	let mut stdout = stdout();
+	
+	for y in 0..19 {
+		execute!(stdout, cursor::MoveTo(x_offset as u16, y as u16 + y_offset as u16)).unwrap();
+		for x in 0..12 {
+			write!(stdout, "\x1b[38;5;{}m██", buffer[(x, y)]).unwrap(); // Reads colored pixel from buffer
+		}
+	}
 	Ok(())
 }
+
+
+
+
+
 
 fn update_display(
 	x_offset : u8,
@@ -79,25 +134,6 @@ fn update_display(
 	write!(stdout, "Level").unwrap();
 	execute!(stdout, cursor::MoveTo(28 +x_offset as u16, 10 +y_offset as u16)).unwrap();
 	write!(stdout, "{}", level).unwrap();
-	
-	stdout.flush().unwrap(); // flush manually
-	Ok(())
-}
-
-fn update_border(
-	x_offset : u8,
-	y_offset : u8) -> io::Result<()> {
-
-	let mut stdout = stdout();
-	write!(stdout, "\x1b[38;5;7m")?;
-	for i in 0..18 {
-		execute!(stdout, cursor::MoveTo(x_offset as u16, i +y_offset as u16)).unwrap();
-		write!(stdout, "██").unwrap();
-		execute!(stdout, cursor::MoveTo(22 +x_offset as u16, i +y_offset as u16)).unwrap();
-		write!(stdout, "██").unwrap();
-	}
-	execute!(stdout, cursor::MoveTo(x_offset as u16, 18 +y_offset as u16)).unwrap();
-	write!(stdout, "████████████████████████").unwrap();
 	
 	stdout.flush().unwrap(); // flush manually
 	Ok(())
