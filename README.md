@@ -10,4 +10,4 @@ Arrow-keys to move
 
 X/Y to rotate
 
-O/P to pause/unpause
+Tab to pause/unpause
