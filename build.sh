@@ -14,12 +14,12 @@ cargo b --release --target x86_64-unknown-linux-gnu
 rm -rf build # clear all binaries
 mkdir build
 
-mv target/i686-pc-windows-gnu/release/tetris build/tetris-win_gnu-32bit
-# mv target/i686-pc-windows-msvc/release/tetris build/tetris-win_msvc-32bit
+mv target/i686-pc-windows-gnu/release/tetris.exe build/tetris-win_gnu-32bit.exe
+# mv target/i686-pc-windows-msvc/release/tetris.exe build/tetris-win_msvc-32bit.exe
 # mv target/aarch64-apple-darwin/release/tetris build/tetris-macos_non-intel
 mv target/i686-unknown-linux-gnu/release/tetris build/tetris-linux-32bit
 
-mv target/x86_64-pc-windows-gnu/release/tetris build/tetris-win_gnu-64bit
-# mv target/x86_64-pc-windows-msvc/release/tetris build/tetris-win_msvc-64bit
+mv target/x86_64-pc-windows-gnu/release/tetris.exe build/tetris-win_gnu-64bit.exe
+# mv target/x86_64-pc-windows-msvc/release/tetris.exe build/tetris-win_msvc-64bit.exe
 # mv target/x86_64-apple-darwin/release/tetris build/tetris-macos_intel
 mv target/x86_64-unknown-linux-gnu/release/tetris build/tetris-linux-64bit
