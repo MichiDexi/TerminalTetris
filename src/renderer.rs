@@ -127,7 +127,7 @@ pub fn render_text(level : &u8, score : &u32, lines : &u32, x_offset : u8, y_off
 	write!(stdout, "{}", level).unwrap();
 
 	// Next
-	execute!(stdout, cursor::MoveTo(2+x_offset as u16, y_offset as u16+9)).unwrap();
+	execute!(stdout, cursor::MoveTo(4+x_offset as u16, y_offset as u16+11)).unwrap();
 	write!(stdout, "Next").unwrap();
 	Ok(())
 }
