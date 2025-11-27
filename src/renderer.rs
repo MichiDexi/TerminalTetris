@@ -91,11 +91,25 @@ pub fn render_buffer(buffer : &SMatrix<u8, 12, 19>, x_offset : u8, y_offset : u8
 	Ok(())
 }
 
+pub fn render_piece_preview(preview : &mut SMatrix<u8, 6, 6>, player_obj : &CurrentObject, x_offset : u8, y_offset : u8) -> io::Result<()> {
+	let mut stdout = stdout();
+
+	set_next_piece(preview, player_obj);
+	
+	for y in 0..6 {
+		execute!(stdout, cursor::MoveTo(x_offset as u16, y as u16 + y_offset as u16)).unwrap();
+		for x in 0..6 {
+			write!(stdout, "\x1b[38;5;{}m██", preview[(x, y)]).unwrap(); // Reads colored pixel from buffer
+		}
+	}
+	Ok(())
+}
+
 pub fn set_next_piece(preview : &mut SMatrix<u8, 6, 6>, player_obj : &CurrentObject) {
 
 	clear_piece_preview(preview);
 
-	let piece = player_obj.pieces[1];
+	let piece = player_obj.pieces[1]+1;
 
 	preview[(2, 3)] = piece;
 
@@ -106,14 +120,14 @@ pub fn set_next_piece(preview : &mut SMatrix<u8, 6, 6>, player_obj : &CurrentObj
 	let mut y2 : u8 = 0;
 	let mut y3 : u8 = 0;
 
-	match piece { 
+	match piece-1 { 
 		0 => { // L
 			x1 = 1;
 			y1 = 3;
-			x2 = 1;
-			y2 = 4;
+			x2 = 3;
+			y2 = 3;
 			x3 = 3;
-			y3 = 3;
+			y3 = 2;
 		}
 		1 => { // J
 			x1 = 1;
@@ -121,7 +135,7 @@ pub fn set_next_piece(preview : &mut SMatrix<u8, 6, 6>, player_obj : &CurrentObj
 			x2 = 3;
 			y2 = 3;
 			x3 = 1;
-			y3 = 4;
+			y3 = 2;
 		}
 		2 => { // I
 			x1 = 1;
@@ -135,33 +149,33 @@ pub fn set_next_piece(preview : &mut SMatrix<u8, 6, 6>, player_obj : &CurrentObj
 			x1 = 3;
 			y1 = 3;
 			x2 = 3;
-			y2 = 4;
-			x3 = 4;
-			y3 = 4;
+			y2 = 2;
+			x3 = 2;
+			y3 = 2;
 		}
 		4 => { // Z
 			x1 = 1;
-			y1 = 3;
-			x2 = 1;
-			y2 = 3;
-			x3 = 1;
+			y1 = 2;
+			x2 = 2;
+			y2 = 2;
+			x3 = 3;
 			y3 = 3;
 		}
 		5 => { // S
 			x1 = 1;
 			y1 = 3;
-			x2 = 1;
-			y2 = 3;
-			x3 = 1;
-			y3 = 3;
+			x2 = 2;
+			y2 = 2;
+			x3 = 3;
+			y3 = 2;
 		}
 		6 => { // T
 			x1 = 1;
-			y1 = 3;
-			x2 = 1;
-			y2 = 3;
-			x3 = 1;
-			y3 = 3;
+			y1 = 2;
+			x2 = 3;
+			y2 = 2;
+			x3 = 2;
+			y3 = 2;
 		}
 		_ => {  }
 	}

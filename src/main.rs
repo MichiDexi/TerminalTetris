@@ -30,8 +30,6 @@ mod input;
 // Constant values
 const TARGET_FPS : f32 = 59.73;
 
-
-
 // Entry point
 fn main() -> io::Result<()> {
 
@@ -99,6 +97,7 @@ fn game(
 	let mut playfield_buffer : SMatrix<u8, 12, 19> = SMatrix::zeros(); // Used to render playfield
 	let mut piecepreview_buffer : SMatrix<u8, 6, 6> = SMatrix::zeros(); // Used to render piece preview
 	renderer::border(&mut playfield_buffer);
+	
 
 	let (cols, rows) = size().unwrap(); // Gets size of terminal
 	let x_offset = (cols/2) as u8 -18; // Render x offset
@@ -141,8 +140,9 @@ fn game(
 		}
 
 		// Render
-		renderer::inject_buffers(&mut playfield_buffer, &mut piecepreview_buffer, &cur_obj, map, level, score, lines);
+		renderer::inject_buffers(&mut playfield_buffer, &cur_obj, map);
 		let _ = renderer::render_buffer(&playfield_buffer, x_offset, y_offset);
+		let _ = renderer::render_piece_preview(&mut piecepreview_buffer, &cur_obj, 0, 0);
 
 		// Frame time management for consistent framerate
 		let frame_duration = Instant::now().duration_since(now);
