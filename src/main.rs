@@ -143,7 +143,7 @@ fn game(
 		renderer::inject_buffers(&mut playfield_buffer, &cur_obj, map);
 		let _ = renderer::render_buffer(&playfield_buffer, x_offset, y_offset);
 		if piecepreview_render_flag.is_ok() {
-			let _ = renderer::render_piece_preview(&mut piecepreview_buffer, &cur_obj, x_offset, y_offset);
+			let _ = renderer::render_piece_preview(&mut piecepreview_buffer, &cur_obj, x_offset+10, y_offset);
 		}
 
 		// Frame time management for consistent framerate
