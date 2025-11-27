@@ -4,7 +4,6 @@ use std::{
 use nalgebra::SMatrix;
 use rand::prelude::*;
 
-
 pub struct CurrentObject {
 	// Center piece (everything rotates around this point)
 	pub cx : u8,
@@ -34,7 +33,7 @@ impl CurrentObject {
 		&mut self,
 		matrix : &mut SMatrix<u8, 10, 18>,
 		input : (i8, i8, bool, bool), // x, r, soft, hard
-		score_vars : (&mut u8, &mut u32, &mut u32)) -> io::Result<()>
+		score_vars : (&mut u8, &mut u32, &mut u32)) -> io::Result<bool>
 	{
 
 		// Object reset
@@ -46,10 +45,11 @@ impl CurrentObject {
 					!self.try_move(matrix, 1, 0) {
 					self.dead = true;
 				}
+				return Ok(true);
 			}
 			else {
 				self.exist_delay -= 1;
-				return Ok(());
+				return Ok(false);
 			}
 		}
 		
@@ -163,7 +163,7 @@ impl CurrentObject {
 				self.y3 = temp;
 			}
 		}
-		Ok(())
+		Ok(false)
 	}
 
 	

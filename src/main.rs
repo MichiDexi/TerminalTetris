@@ -111,7 +111,7 @@ fn game(
 
 
 		// Player object
-		let _ = cur_obj.tick_obj(&mut map,
+		let piecepreview_render_flag = cur_obj.tick_obj(&mut map,
 			(input_check.0, input_check.1, input_check.2, input_check.3),
 			(&mut level, &mut score, &mut lines)
 		);
@@ -142,7 +142,9 @@ fn game(
 		// Render
 		renderer::inject_buffers(&mut playfield_buffer, &cur_obj, map);
 		let _ = renderer::render_buffer(&playfield_buffer, x_offset, y_offset);
-		let _ = renderer::render_piece_preview(&mut piecepreview_buffer, &cur_obj, 0, 0);
+		if piecepreview_render_flag.is_ok() {
+			let _ = renderer::render_piece_preview(&mut piecepreview_buffer, &cur_obj, x_offset, y_offset);
+		}
 
 		// Frame time management for consistent framerate
 		let frame_duration = Instant::now().duration_since(now);
