@@ -105,29 +105,29 @@ pub fn render_piece_preview(preview : &mut SMatrix<u8, 6, 6>, player_obj : &Curr
 	Ok(())
 }
 
-pub fn render_text(score : u32, level : u8, lines : u32, x_offset : u8, y_offset : u8) -> io::Result<()> {
+pub fn render_text(level : &u8, score : &u32, lines : &u32, x_offset : u8, y_offset : u8) -> io::Result<()> {
 	let mut stdout = stdout();
 
 	// Score
 	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16)).unwrap();
 	write!(stdout, "\x1b[38;5;7mScore:").unwrap();
-	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16-1)).unwrap();
+	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16+1)).unwrap();
 	write!(stdout, "{}", score).unwrap();
 
 	// Lines
-	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16-3)).unwrap();
+	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16+3)).unwrap();
 	write!(stdout, "Lines:").unwrap();
-	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16-4)).unwrap();
+	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16+4)).unwrap();
 	write!(stdout, "{}", lines).unwrap();
 
 	// Level
-	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16-6)).unwrap();
+	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16+6)).unwrap();
 	write!(stdout, "Level:").unwrap();
-	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16-7)).unwrap();
+	execute!(stdout, cursor::MoveTo(x_offset as u16, y_offset as u16+7)).unwrap();
 	write!(stdout, "{}", level).unwrap();
 
 	// Next
-	execute!(stdout, cursor::MoveTo(2+x_offset as u16, y_offset as u16-9)).unwrap();
+	execute!(stdout, cursor::MoveTo(2+x_offset as u16, y_offset as u16+9)).unwrap();
 	write!(stdout, "Next").unwrap();
 	Ok(())
 }

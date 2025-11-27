@@ -142,8 +142,9 @@ fn game(
 		// Render
 		renderer::inject_buffers(&mut playfield_buffer, &cur_obj, map);
 		let _ = renderer::render_buffer(&playfield_buffer, x_offset, y_offset);
-		if piecepreview_render_flag.is_ok() {
+		if let Ok(flag) = piecepreview_render_flag && flag {
 			let _ = renderer::render_piece_preview(&mut piecepreview_buffer, &cur_obj, x_offset+26, y_offset+13);
+			let _ = renderer::render_text(&level, &score, &lines, x_offset+26, y_offset+0);
 		}
 
 		// Frame time management for consistent framerate
