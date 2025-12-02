@@ -96,12 +96,14 @@ fn game(
 	let mut map : SMatrix<u8, 10, 18> = SMatrix::zeros(); // The playfield
 	let mut playfield_buffer : SMatrix<u8, 12, 19> = SMatrix::zeros(); // Used to render playfield
 	let mut piecepreview_buffer : SMatrix<u8, 6, 6> = SMatrix::zeros(); // Used to render piece preview
-	renderer::border(&mut playfield_buffer);
-	
 
 	let (cols, rows) = size().unwrap(); // Gets size of terminal
 	let x_offset = (cols/2) as u8 -18; // Render x offset
 	let y_offset = (rows/2) as u8 -9; // Render y offset
+
+	renderer::border(&mut playfield_buffer);
+	let _ = renderer::render_text(&level, &score, &lines, x_offset+26, y_offset);
+	print!("\x1b[2J");
 
 	// Main loop
 	loop {
@@ -144,7 +146,7 @@ fn game(
 		let _ = renderer::render_buffer(&playfield_buffer, x_offset, y_offset);
 		if let Ok(flag) = piecepreview_render_flag && flag {
 			let _ = renderer::render_piece_preview(&mut piecepreview_buffer, &cur_obj, x_offset+26, y_offset+13);
-			let _ = renderer::render_text(&level, &score, &lines, x_offset+26, y_offset+0);
+			let _ = renderer::render_text(&level, &score, &lines, x_offset+26, y_offset);
 		}
 
 		// Frame time management for consistent framerate
