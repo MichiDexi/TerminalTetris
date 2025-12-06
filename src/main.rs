@@ -101,9 +101,10 @@ fn game(
 	let x_offset = (cols/2) as u8 -18; // Render x offset
 	let y_offset = (rows/2) as u8 -9; // Render y offset
 
-	renderer::border(&mut playfield_buffer);
-	let _ = renderer::render_text(&level, &score, &lines, x_offset+26, y_offset);
 	print!("\x1b[2J");
+	renderer::border(&mut playfield_buffer);
+	let _ = renderer::render_piece_preview(&mut piecepreview_buffer, &cur_obj, x_offset+26, y_offset+13);
+	let _ = renderer::render_text(&level, &score, &lines, x_offset+26, y_offset);
 
 	// Main loop
 	loop {
